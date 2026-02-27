@@ -183,19 +183,25 @@ const LeafAnalysis = () => {
             'Content-Type': 'multipart/form-data',
             'Authorization': `Bearer ${token}`
           },
-          timeout: 45000
+          timeout: 60000 // Increased timeout for CPU inference
         }
       );
 
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      if (response.data && response.data.disease) {
-        const normalizedDisease = normalizeDiseaseeName(response.data.disease);
-        setResult({ ...response.data, disease: normalizedDisease, processingTime: duration });
-        setProcessingTime(duration);
+      if (response.data) {
+        if (response.data.success === false) {
+          setError(response.data.error || 'Prediction failed');
+        } else if (response.data.disease) {
+          const normalizedDisease = normalizeDiseaseeName(response.data.disease);
+          setResult({ ...response.data, disease: normalizedDisease, processingTime: duration });
+          setProcessingTime(duration);
+        } else {
+          setError('No disease detected in response');
+        }
       } else {
-        setError('No disease detected in response');
+        setError('No response from server');
       }
     } catch (err) {
       console.error('❌ Prediction error:', err);

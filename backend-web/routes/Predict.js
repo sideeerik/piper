@@ -26,13 +26,22 @@ const upload = multer({
  * Predict pepper leaf disease from image
  */
 router.post('/disease', isAuthenticatedUser, upload.single('image'), async (req, res) => {
+  const startTime = Date.now();
+  const requestId = req.query.requestId || req.body.requestId || `leaf_${Date.now()}`;
+
+  console.log(`\n🟢 [${requestId}] NEW LEAF DISEASE PREDICTION REQUEST RECEIVED`);
+
   try {
     if (!req.file) {
+      console.error(`❌ [${requestId}] No image file provided`);
       return res.status(400).json({
         success: false,
-        error: 'No image provided. Please upload an image.'
+        error: 'No image provided. Please upload an image.',
+        requestId
       });
     }
+
+    console.log(`📸 [${requestId}] Image received: ${req.file.originalname} (${req.file.size} bytes)`);
 
     // Create temp directory if it doesn't exist
     const tempDir = path.join(__dirname, '../temp');
@@ -40,21 +49,25 @@ router.post('/disease', isAuthenticatedUser, upload.single('image'), async (req,
       fs.mkdirSync(tempDir, { recursive: true });
     }
 
-    // Save image temporarily
-    const tempImagePath = path.join(tempDir, `temp_${Date.now()}_${req.file.originalname}`);
+    // Save image temporarily - use requestId for unique filename
+    const tempImagePath = path.join(tempDir, `${requestId}.jpg`);
     fs.writeFileSync(tempImagePath, req.file.buffer);
-
-    console.log(`📸 Processing image: ${tempImagePath}`);
+    
+    console.log(`💾 [${requestId}] Temp file saved: ${tempImagePath}`);
 
     // Call Python prediction script
     const result = await new Promise((resolve, reject) => {
-      // Python script path - Use YOLOv8 model for leaf disease
+      // Python script path - Use NEW CPU-Optimized Web Script
       const pythonScriptPath = path.join(__dirname, '../utils/predict_disease_yolov8.py');
       const modelPath = path.join(__dirname, '../ml_models/leaf/train/weights/best.pt');
-      const pythonExe = 'C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+      const pythonExe = process.env.PYTHON_EXE || 'C:\\Users\\admin\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+      
+      console.log(`🐍 [${requestId}] Spawning Python (CPU-Optimized)...`);
+      console.log(`🐍 [${requestId}] Script: ${pythonScriptPath}`);
+      console.log(`🐍 [${requestId}] Model: leaf/train/weights/best.pt`);
       
       // Use shell: true to bypass Windows App Execution Alias issues
-      // Quote paths to handle spaces in directory names (e.g., "6.1 Reporting")
+      // Quote paths to handle spaces in directory names
       const python = spawn(pythonExe, [`"${pythonScriptPath}"`, `"${tempImagePath}"`, `"${modelPath}"`], {
         shell: true,
         stdio: ['ignore', 'pipe', 'pipe']
@@ -69,7 +82,7 @@ router.post('/disease', isAuthenticatedUser, upload.single('image'), async (req,
 
       python.stderr.on('data', (data) => {
         errorOutput += data.toString();
-        console.error(`⚠️ Python stderr: ${data}`);
+        console.error(`⚠️ [${requestId}] Python stderr: ${data}`);
       });
 
       python.on('close', (code) => {
@@ -77,7 +90,7 @@ router.post('/disease', isAuthenticatedUser, upload.single('image'), async (req,
         try {
           fs.unlinkSync(tempImagePath);
         } catch (e) {
-          console.error('Error deleting temp file:', e);
+          console.error(`[${requestId}] Error deleting temp file:`, e);
         }
 
         if (code === 0) {
@@ -85,18 +98,18 @@ router.post('/disease', isAuthenticatedUser, upload.single('image'), async (req,
             const parsedOutput = JSON.parse(output.trim());
             resolve(parsedOutput);
           } catch (e) {
-            console.error('Error parsing Python output:', e);
+            console.error(`[${requestId}] Error parsing Python output:`, e);
             reject(new Error('Invalid prediction output'));
           }
         } else {
-          console.error(`Python process exited with code ${code}`);
-          console.error(`Error: ${errorOutput}`);
+          console.error(`[${requestId}] Python process exited with code ${code}`);
+          console.error(`[${requestId}] Error: ${errorOutput}`);
           reject(new Error(`Prediction failed: ${errorOutput || 'Unknown error'}`));
         }
       });
 
       python.on('error', (err) => {
-        console.error('Failed to start Python process:', err);
+        console.error(`[${requestId}] Failed to start Python process:`, err);
         try {
           fs.unlinkSync(tempImagePath);
         } catch (e) {}
@@ -105,36 +118,45 @@ router.post('/disease', isAuthenticatedUser, upload.single('image'), async (req,
     });
 
     if (result.error) {
-      return res.status(400).json({
+      const duration = Date.now() - startTime;
+      console.log(`⚠️ [${requestId}] Leaf prediction failed (took ${duration}ms):`, result.error);
+      return res.status(200).json({
         success: false,
-        error: result.error
+        error: result.error,
+        processingTime: duration,
+        requestId
       });
     }
 
+    const duration = Date.now() - startTime;
+    console.log(`✅ [${requestId}] Leaf prediction completed in ${duration}ms`);
+    console.log(`📊 [${requestId}] Result: ${result.disease} (${result.confidence}%)`);
+    
     res.status(200).json({
       success: true,
+      processingTime: duration,
+      requestId,
       ...result
     });
 
   } catch (error) {
-    console.error('❌ Prediction error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`❌ [${requestId}] Prediction error (${duration}ms):`, error.message);
 
     // Try to clean up temp file if it exists
-    if (req.file) {
-      try {
+    try {
         const tempDir = path.join(__dirname, '../temp');
-        const files = fs.readdirSync(tempDir);
-        files.forEach(file => {
-          if (file.startsWith('temp_')) {
-            fs.unlinkSync(path.join(tempDir, file));
-          }
-        });
-      } catch (e) {}
-    }
+        const tempImagePath = path.join(tempDir, `${requestId}.jpg`);
+        if (fs.existsSync(tempImagePath)) {
+          fs.unlinkSync(tempImagePath);
+        }
+    } catch (e) {}
 
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to analyze image. Please try again.'
+      error: error.message || 'Failed to analyze image. Please try again.',
+      requestId,
+      processingTime: duration
     });
   }
 });

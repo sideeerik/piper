@@ -3,138 +3,138 @@ import json
 import sys
 import cv2
 import numpy as np
-from pathlib import Path
 from ultralytics import YOLO
 
-# Suppress warnings
+# Suppress TensorFlow and other warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-
-def predict_leaf_disease(image_path, model_path):
+def predict_leaf_disease_cpu(image_path, model_path):
     """
-    Detect pepper leaf disease using YOLOv8 model.
-    Returns ONLY disease class and confidence (no bounding boxes - leaf analysis only).
-    Bounding boxes are for bunga detection only.
+    WEB OPTIMIZED VERSION: Detect Leaf Disease.
+    - Optimized for CPU-only environments
+    - Prioritizes Disease detection over 'Healthy' labels
+    - Lowers threshold to catch early disease signs
+    """
     
-    Returns:
-    {
-        "success": true/false,
-        "disease": "Healthy/Footrot/Pollu_Disease/Slow-Decline/Leaf_Blight/Yellow_Mottle_Virus",
-        "confidence": float (0-100),
-        "image_size": [width, height],
-        "error": null
+    result = {
+        "success": False,
+        "disease": None,
+        "confidence": 0,
+        "detections": [],
+        "error": None,
+        "image_size": [0, 0]
     }
-    """
-    
+
     try:
-        # Read image
+        # 1. Validation
+        if not os.path.exists(image_path):
+            result["error"] = f"Image file not found at {image_path}"
+            return result
+            
+        if not os.path.exists(model_path):
+            result["error"] = f"Model file not found at {model_path}"
+            return result
+
+        # 2. Read Image
         img = cv2.imread(image_path)
         if img is None:
-            return {
-                "success": False,
-                "error": "Could not read image",
-                "disease": None,
-                "confidence": 0,
-                "image_size": [0, 0]
-            }
-        
+            result["error"] = "Failed to read image file (corrupt or invalid format)"
+            return result
+            
         img_height, img_width = img.shape[:2]
-        image_size = [img_width, img_height]
+        result["image_size"] = [img_width, img_height]
         
-        # Check if model path exists
-        if not os.path.exists(model_path):
-            return {
-                "success": False,
-                "error": f"Model not found at {model_path}",
-                "disease": None,
-                "confidence": 0,
-                "image_size": image_size
-            }
-        
-        print(f"🤖 Loading YOLOv8 leaf disease model...", file=sys.stderr)
-        
-        # Load YOLOv8 model
+        print(f"📸 [LEAF-CPU] Processing image: {img_width}x{img_height}", file=sys.stderr)
+
+        # 3. Load Model (CPU Mode)
+        print(f"🤖 [LEAF-CPU] Loading YOLO model: {model_path}", file=sys.stderr)
         model = YOLO(model_path)
         
-        # Print model details for debugging
-        print(f"📋 Model names dict: {model.names}", file=sys.stderr)
-        print(f"📋 Number of classes: {len(model.names)}", file=sys.stderr)
+        # Log classes for debugging
+        print(f"📋 [LEAF-CPU] Model Classes: {model.names}", file=sys.stderr)
         
-        # Run inference - Optimized for speed
-        # Use conf=0.5 (filter weak detections), imgsz=640 (smaller for speed), half=True (faster FP16)
+        # 4. Run Inference
+        # Lower confidence to 0.10 to ensure we catch diseases even if model is unsure
         results = model.predict(
-            image_path, 
-            conf=0.5,      # Higher confidence threshold - only strong detections
-            imgsz=640,     # Standard size (can try 512 for faster)
-            verbose=False, 
-            half=True      # FP16 inference (faster on GPU)
+            image_path,
+            conf=0.10,     # Lowered from 0.25 to 0.10 to be more sensitive
+            imgsz=640,
+            device='cpu',
+            half=False, 
+            verbose=False,
+            max_det=10     # Get top 10 to inspect
         )
-        detection_data = results[0]
         
-        # Process detections - Get best disease classification (no bounding boxes for leaf)
-        best_disease = "Healthy"
-        best_confidence = 0
+        # 5. Process Results
+        detection = results[0]
         
-        print(f"📊 Model class names: {detection_data.names}", file=sys.stderr)
-        print(f"🔍 Total detections: {len(detection_data.boxes) if detection_data.boxes is not None else 0}", file=sys.stderr)
+        disease_candidates = []
+        healthy_candidates = []
         
-        if detection_data.boxes is not None and len(detection_data.boxes) > 0:
-            # Find best detection only
-            for idx, box in enumerate(detection_data.boxes):
-                confidence = float(box.conf[0])
+        if detection.boxes is not None and len(detection.boxes) > 0:
+            for box in detection.boxes:
+                conf = float(box.conf[0])
                 cls_idx = int(box.cls[0])
-                disease_name = detection_data.names[cls_idx]
+                name = detection.names[cls_idx]
                 
-                print(f"  📍 Detection {idx}: cls_idx={cls_idx}, name='{disease_name}', conf={confidence:.4f}", file=sys.stderr)
+                # Store all detections
+                result["detections"].append({
+                    "class": name,
+                    "confidence": round(conf * 100, 2),
+                    "bbox": [int(x) for x in box.xyxy[0].tolist()]
+                })
                 
-                # Track only the best confidence
-                if confidence > best_confidence:
-                    best_confidence = confidence
-                    best_disease = disease_name
+                # Categorize
+                if name.lower() == "healthy":
+                    healthy_candidates.append((name, conf))
+                else:
+                    disease_candidates.append((name, conf))
             
-            print(f"✅ Best detection: {best_disease} ({best_confidence:.4f})", file=sys.stderr)
+            # DECISION LOGIC:
+            # Prioritize ANY disease detection over "Healthy"
+            if len(disease_candidates) > 0:
+                # Pick the highest confidence disease
+                disease_candidates.sort(key=lambda x: x[1], reverse=True)
+                best_class, best_conf = disease_candidates[0]
+                
+                print(f"✅ [LEAF-CPU] Disease Detected: {best_class} ({round(best_conf*100, 2)}%)", file=sys.stderr)
+                result["success"] = True
+                result["disease"] = best_class
+                result["confidence"] = round(best_conf * 100, 2)
+                
+            elif len(healthy_candidates) > 0:
+                # Only Healthy detected
+                healthy_candidates.sort(key=lambda x: x[1], reverse=True)
+                best_class, best_conf = healthy_candidates[0]
+                
+                print(f"✅ [LEAF-CPU] Healthy Detected: {round(best_conf*100, 2)}%", file=sys.stderr)
+                result["success"] = True
+                result["disease"] = "Healthy"
+                result["confidence"] = round(best_conf * 100, 2)
+            else:
+                # Should not happen if len > 0
+                pass
+                
         else:
-            # No disease detected - assume healthy
-            best_disease = "Healthy"
-            best_confidence = 0.95
-            print(f"✅ No disease regions detected - Leaf is Healthy", file=sys.stderr)
-        
-        # Return results - CLEAN format for leaf analysis
-        return {
-            "success": True,
-            "disease": best_disease,
-            "confidence": round(best_confidence * 100, 2),
-            "image_size": image_size,
-            "error": None
-        }
-    
-    except Exception as e:
-        print(f"❌ Fatal error: {str(e)}", file=sys.stderr)
-        return {
-            "success": False,
-            "error": f"Processing error: {str(e)}",
-            "disease": None,
-            "confidence": 0,
-            "image_size": [0, 0]
-        }
+            print(f"ℹ️ [LEAF-CPU] No detections found. Defaulting to Healthy.", file=sys.stderr)
+            result["success"] = True
+            result["disease"] = "Healthy"
+            result["confidence"] = 95.0
+            
+        return result
 
+    except Exception as e:
+        print(f"❌ [LEAF-CPU] Critical Error: {str(e)}", file=sys.stderr)
+        result["error"] = str(e)
+        return result
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print(json.dumps({
-            "error": "No image path provided",
-            "success": False,
-            "disease": None,
-            "confidence": 0,
-            "image_size": [0, 0]
-        }))
+        print(json.dumps({"error": "No image path provided", "success": False}))
         sys.exit(1)
     
-    image_path = sys.argv[1]
+    img_path = sys.argv[1]
     model_path = sys.argv[2] if len(sys.argv) > 2 else "leaf_disease_model.pt"
     
-    print(f"📸 Input image: {image_path}", file=sys.stderr)
-    print(f"🤖 Model: {model_path}", file=sys.stderr)
-    
-    result = predict_leaf_disease(image_path, model_path)
-    print(json.dumps(result))
+    final_result = predict_leaf_disease_cpu(img_path, model_path)
+    print(json.dumps(final_result))
