@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  ImageBackground,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +28,13 @@ import { BlurView } from 'expo-blur';
 const { width, height } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
 
+const backgroundImages = [
+  require('../../../../picsbl/index2.png'),
+  require('../../../../picsbl/index3.png'),
+  require('../../../../picsbl/index4.png'),
+  require('../../../../picsbl/index1.jpg'),
+];
+
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,11 +43,28 @@ export default function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showForm, setShowForm] = useState(false);
+  const carouselTimerRef = useRef(null);
+  const formSlideAnim = useRef(new Animated.Value(400)).current;
+  const backgroundOpacityAnim = useRef(new Animated.Value(1)).current;
+  const createAccountScaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     // GoogleSignin.configure({
     //   webClientId: GOOGLE_WEB_CLIENT_ID,
     // });
+    
+    // Start carousel timer
+    carouselTimerRef.current = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % backgroundImages.length);
+    }, 4000);
+    
+    return () => {
+      if (carouselTimerRef.current) {
+        clearInterval(carouselTimerRef.current);
+      }
+    };
   }, []);
 
   const onGoogleButtonPress = async () => {
@@ -242,187 +267,272 @@ export default function RegisterScreen({ navigation }) {
     }
   };
 
+  const handleCreateAccount = () => {
+    Animated.parallel([
+      Animated.timing(formSlideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backgroundOpacityAnim, {
+        toValue: 0.4,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(createAccountScaleAnim, {
+        toValue: 0.9,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    Animated.parallel([
+      Animated.timing(formSlideAnim, {
+        toValue: 400,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(backgroundOpacityAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(createAccountScaleAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+    setShowForm(false);
+  };
+
   return (
-    <View style={styles.container}>
-      {/* 1. Dynamic Mesh Gradient Background - Adjusted for Light Theme */}
-      <LinearGradient
-        colors={['#F0F9F4', '#E8F6F0', '#D5F5E3']} // Very light mint/white gradient
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
-      
-      {/* Decorative Orbs for Depth - Adjusted colors */}
-      <View style={[styles.orb, { top: -50, left: -50, backgroundColor: '#27AE60', width: 200, height: 200 }]} />
-      <View style={[styles.orb, { bottom: 100, right: -20, backgroundColor: '#52BE80', width: 150, height: 150 }]} />
-
-      <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* 2. Hero Element - Glassmorphic Card */}
-            <BlurView intensity={20} tint="dark" style={styles.glassCard}>
-              
-              {/* Logo & Title */}
-              <View style={styles.header}>
-                <View style={styles.logoContainer}>
-                   <Image source={logoImage} style={styles.logoImage} resizeMode="contain" />
+    <ImageBackground
+      source={backgroundImages[currentImageIndex]}
+      style={{ flex: 1 }}
+      resizeMode="cover"
+    >
+      {/* Dark overlay for better readability */}
+      <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)' }}>
+        <View style={styles.container}>
+          {/* 2. Hero Element - Glassmorphic Card */}
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+              {/* Hero Section */}
+              {!showForm && (
+                <View style={styles.heroSection}>
+                  <View style={styles.heroContent}>
+                    <View style={styles.heroLogoContainer}>
+                      <Image source={logoImage} style={styles.heroLogo} resizeMode="contain" />
+                    </View>
+                    <Text style={styles.heroTitle}>PiperSmart</Text>
+                    <Text style={styles.heroSubtitle}>Smart Pepper Farming Companion</Text>
+                  </View>
                 </View>
-                <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Join PiperSmart Today</Text>
-              </View>
+              )}
 
-              {/* Form Inputs */}
-              <View style={styles.formContainer}>
-                <AnimatedInput
-                  label="Full Name"
-                  icon="user"
-                  focusAnim={nameFocusAnim}
-                  value={name}
-                  onChangeText={setName}
-                  ref={nameInput}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                  onSubmitEditing={() => emailInput.current?.focus()}
-                  textContentType="name"
-                  autoComplete="name"
-                />
-
-                <AnimatedInput
-                  label="Email Address"
-                  icon="mail"
-                  focusAnim={emailFocusAnim}
-                  value={email}
-                  onChangeText={setEmail}
-                  ref={emailInput}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordInput.current?.focus()}
-                  textContentType="emailAddress"
-                  autoComplete="email"
-                />
-
-                <AnimatedInput
-                  label="Password"
-                  icon="lock"
-                  focusAnim={passwordFocusAnim}
-                  value={password}
-                  onChangeText={setPassword}
-                  ref={passwordInput}
-                  secureTextEntry={!showPassword}
-                  returnKeyType="next"
-                  onSubmitEditing={() => confirmPasswordInput.current?.focus()}
-                  rightElement={
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={styles.eyeButton}
-                    >
-                      <Feather 
-                        name={showPassword ? "eye-off" : "eye"} 
-                        size={20} 
-                        color="rgba(255,255,255,0.6)" 
-                      />
-                    </TouchableOpacity>
-                  }
-                  textContentType="newPassword"
-                  autoComplete="password-new"
-                />
-
-                <AnimatedInput
-                  label="Confirm Password"
-                  icon="lock"
-                  focusAnim={confirmPasswordFocusAnim}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  ref={confirmPasswordInput}
-                  secureTextEntry={!showConfirmPassword}
-                  returnKeyType="done"
-                  onSubmitEditing={handleRegister}
-                  rightElement={
-                    <TouchableOpacity
-                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                      style={styles.eyeButton}
-                    >
-                      <Feather 
-                        name={showConfirmPassword ? "eye-off" : "eye"} 
-                        size={20} 
-                        color="rgba(255,255,255,0.6)" 
-                      />
-                    </TouchableOpacity>
-                  }
-                  textContentType="newPassword"
-                  autoComplete="password-new"
-                />
-              </View>
-
-              {/* 3. Haptic Register Button */}
-              <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-                <TouchableOpacity
-                  style={styles.registerButton}
-                  onPress={handleRegister}
-                  disabled={loading}
-                  activeOpacity={1}
+              {/* Form Modal - Slides up from bottom */}
+              {showForm && (
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  style={{ flex: 1, width: '100%' }}
                 >
-                  {/* Shimmer Effect */}
                   <Animated.View
                     style={[
-                      styles.shimmer,
-                      { transform: [{ translateX: shimmerTranslate }] }
+                      styles.formModalContainer,
+                      { transform: [{ translateY: formSlideAnim }] },
                     ]}
                   >
-                    <LinearGradient
-                      colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{ flex: 1 }}
-                    />
-                  </Animated.View>
+                    <ScrollView
+                      contentContainerStyle={styles.formScrollContent}
+                      showsVerticalScrollIndicator={false}
+                      keyboardShouldPersistTaps="handled"
+                    >
+                      <BlurView intensity={20} tint="dark" style={styles.glassCard}>
+                        {/* Close Button */}
+                        <TouchableOpacity
+                          style={styles.closeButton}
+                          onPress={handleCloseForm}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                          <Feather name="chevron-down" size={24} color="#1B4D3E" />
+                        </TouchableOpacity>
 
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.buttonText}>Create Account</Text>
-                  )}
+                        {/* Logo & Title */}
+                        <View style={styles.header}>
+                          <View style={styles.logoContainer}>
+                            <Image source={logoImage} style={styles.logoImage} resizeMode="contain" />
+                          </View>
+                          <Text style={styles.title}>Create Account</Text>
+                          <Text style={styles.subtitle}>Join PiperSmart Today</Text>
+                        </View>
+
+                        {/* Form Inputs */}
+                        <View style={styles.formContainer}>
+                          <AnimatedInput
+                            label="Full Name"
+                            icon="user"
+                            focusAnim={nameFocusAnim}
+                            value={name}
+                            onChangeText={setName}
+                            ref={nameInput}
+                            autoCapitalize="words"
+                            returnKeyType="next"
+                            onSubmitEditing={() => emailInput.current?.focus()}
+                            textContentType="name"
+                            autoComplete="name"
+                          />
+
+                          <AnimatedInput
+                            label="Email Address"
+                            icon="mail"
+                            focusAnim={emailFocusAnim}
+                            value={email}
+                            onChangeText={setEmail}
+                            ref={emailInput}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
+                            returnKeyType="next"
+                            onSubmitEditing={() => passwordInput.current?.focus()}
+                            textContentType="emailAddress"
+                            autoComplete="email"
+                          />
+
+                          <AnimatedInput
+                            label="Password"
+                            icon="lock"
+                            focusAnim={passwordFocusAnim}
+                            value={password}
+                            onChangeText={setPassword}
+                            ref={passwordInput}
+                            secureTextEntry={!showPassword}
+                            returnKeyType="next"
+                            onSubmitEditing={() => confirmPasswordInput.current?.focus()}
+                            rightElement={
+                              <TouchableOpacity
+                                onPress={() => setShowPassword(!showPassword)}
+                                style={styles.eyeButton}
+                              >
+                                <Feather 
+                                  name={showPassword ? "eye-off" : "eye"} 
+                                  size={20} 
+                                  color="rgba(255,255,255,0.6)" 
+                                />
+                              </TouchableOpacity>
+                            }
+                            textContentType="newPassword"
+                            autoComplete="password-new"
+                          />
+
+                          <AnimatedInput
+                            label="Confirm Password"
+                            icon="lock"
+                            focusAnim={confirmPasswordFocusAnim}
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            ref={confirmPasswordInput}
+                            secureTextEntry={!showConfirmPassword}
+                            returnKeyType="done"
+                            onSubmitEditing={handleRegister}
+                            rightElement={
+                              <TouchableOpacity
+                                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                style={styles.eyeButton}
+                              >
+                                <Feather 
+                                  name={showConfirmPassword ? "eye-off" : "eye"} 
+                                  size={20} 
+                                  color="rgba(255,255,255,0.6)" 
+                                />
+                              </TouchableOpacity>
+                            }
+                            textContentType="newPassword"
+                            autoComplete="password-new"
+                          />
+                        </View>
+
+                        {/* Register Button */}
+                        <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+                          <TouchableOpacity
+                            style={styles.registerButton}
+                            onPress={handleRegister}
+                            disabled={loading}
+                            activeOpacity={1}
+                          >
+                            {/* Shimmer Effect */}
+                            <Animated.View
+                              style={[
+                                styles.shimmer,
+                                { transform: [{ translateX: shimmerTranslate }] }
+                              ]}
+                            >
+                              <LinearGradient
+                                colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={{ flex: 1 }}
+                              />
+                            </Animated.View>
+
+                            {loading ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <Text style={styles.buttonText}>Create Account</Text>
+                            )}
+                          </TouchableOpacity>
+                        </Animated.View>
+
+                        {/* Divider */}
+                        <View style={styles.divider}>
+                          <View style={styles.dividerLine} />
+                          <Text style={styles.dividerText}>or</Text>
+                          <View style={styles.dividerLine} />
+                        </View>
+
+                        {/* Social Login */}
+                        <TouchableOpacity
+                          style={styles.googleButton}
+                          onPress={onGoogleButtonPress}
+                          disabled={loading}
+                        >
+                          <Feather name="chrome" size={20} color="#1B4D3E" />
+                          <Text style={styles.googleButtonText}>Continue with Google</Text>
+                        </TouchableOpacity>
+
+                        {/* Login Link */}
+                        <View style={styles.loginContainer}>
+                          <Text style={styles.loginText}>Already have an account? </Text>
+                          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                            <Text style={styles.loginLink}>Sign In</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                      </BlurView>
+                    </ScrollView>
+                  </Animated.View>
+                </KeyboardAvoidingView>
+              )}
+            </View>
+
+            {/* Create Account Button - Top of screen when form is hidden */}
+            {!showForm && (
+              <Animated.View style={[styles.createButtonContainer, { transform: [{ scale: createAccountScaleAnim }] }]}>
+                <TouchableOpacity
+                  style={styles.createAccountButton}
+                  onPress={handleCreateAccount}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.createAccountButtonText}>Create Account</Text>
                 </TouchableOpacity>
               </Animated.View>
-
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Social Login */}
-              <TouchableOpacity
-                style={styles.googleButton}
-                onPress={onGoogleButtonPress}
-                disabled={loading}
-              >
-                <Feather name="chrome" size={20} color="#1B4D3E" />
-                <Text style={styles.googleButtonText}>Continue with Google</Text>
-              </TouchableOpacity>
-
-              {/* Login Link */}
-              <View style={styles.loginContainer}>
-                <Text style={styles.loginText}>Already have an account? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                  <Text style={styles.loginLink}>Sign In</Text>
-                </TouchableOpacity>
-              </View>
-
-            </BlurView>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </View>
+            )}
+          </SafeAreaView>
+        </View>
+      </View>
+    </ImageBackground>
   );
 }
 
@@ -495,13 +605,88 @@ const AnimatedInput = ({ label, icon, focusAnim, value, ...props }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F9F4', // Light background
+    backgroundColor: 'transparent',
   },
-  orb: {
+  // Hero Section Styles
+  heroSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+  },
+  heroContent: {
+    alignItems: 'center',
+  },
+  heroLogoContainer: {
+    width: 180,
+    height: 180,
+    marginBottom: 32,
+    shadowColor: '#27AE60',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  heroLogo: {
+    width: '100%',
+    height: '100%',
+  },
+  heroTitle: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  heroSubtitle: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    letterSpacing: 0.5,
+    marginBottom: 48,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  createButtonContainer: {
     position: 'absolute',
-    borderRadius: 999,
-    opacity: 0.15, // Softer opacity for white bg
-    filter: 'blur(40px)', 
+    bottom: 40,
+    left: 20,
+    right: 20,
+    height: 56,
+  },
+  createAccountButton: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: '#27AE60',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#27AE60',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  createAccountButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  formModalContainer: {
+    width: '100%',
+    flex: 1,
+  },
+  formScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-start',
+    paddingBottom: 30,
+  },
+  closeButton: {
+    alignSelf: 'center',
+    paddingVertical: 16,
   },
   scrollContent: {
     flexGrow: 1,
@@ -512,14 +697,14 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#C8E6C9', // Light green border
+    borderColor: 'rgba(200, 230, 201, 0.6)',
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Frosted white
+    backgroundColor: 'rgba(240, 249, 244, 0.98)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.2,
     shadowRadius: 20,
-    elevation: 5,
+    elevation: 10,
   },
   header: {
     alignItems: 'center',

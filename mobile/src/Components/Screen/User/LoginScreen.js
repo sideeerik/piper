@@ -26,69 +26,99 @@ import { BlurView } from 'expo-blur';
 
 const { width, height } = Dimensions.get('window');
 const logoImage = require('../../../../logowalangbg.png');
+const bgImage1 = require('../../../../picsbl/1.jpg');
+const bgImage2 = require('../../../../picsbl/2.jpg');
+const bgImage3 = require('../../../../picsbl/3.jpg');
+const bgImage4 = require('../../../../picsbl/4.jpg');
+const backgroundImages = [bgImage1, bgImage2, bgImage3, bgImage4];
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   
+  // Animation values
+  const formSlideAnim = useRef(new Animated.Value(height)).current;
+  const videoOpacityAnim = useRef(new Animated.Value(1)).current;
+  const imageFadeAnim = useRef(new Animated.Value(1)).current;
+  const emailFocusAnim = useRef(new Animated.Value(0)).current;
+  const passwordFocusAnim = useRef(new Animated.Value(0)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const getStartedScaleAnim = useRef(new Animated.Value(1)).current;
+  
+  const passwordInput = useRef(null);
+  const emailInput = useRef(null);
+  
+  // Rotate background images every 4 seconds
   useEffect(() => {
-    // GoogleSignin.configure({
-    //   webClientId: GOOGLE_WEB_CLIENT_ID,
-    // });
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % backgroundImages.length);
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Handle "Get Started" button press
+  const handleGetStarted = () => {
+    // Scale animation on button
+    Animated.sequence([
+      Animated.timing(getStartedScaleAnim, {
+        toValue: 0.9,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(getStartedScaleAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Slide form up from bottom
+    Animated.parallel([
+      Animated.timing(formSlideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(videoOpacityAnim, {
+        toValue: 0.4,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setShowForm(true);
+  };
+
+  // Handle close form
+  const handleCloseForm = () => {
+    Animated.parallel([
+      Animated.timing(formSlideAnim, {
+        toValue: height,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(videoOpacityAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowForm(false);
+      setEmail('');
+      setPassword('');
+    });
+  };
 
   const onGoogleButtonPress = async () => {
     setLoading(true);
     try {
       console.log('🔥 Native Google Login attempt (DISABLED IN EXPO GO)');
-      
-      // Check if your device supports Google Play
-      // await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      
-      // Get the users ID token
-      // const { data: { idToken } } = await GoogleSignin.signIn();
-      // console.log('✅ Google Sign-In success, got idToken');
-
-      // Create a Google credential with the token
-      // const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-
-      // Sign-in the user with the credential
-      // await auth().signInWithCredential(googleCredential);
-      // console.log('✅ Firebase Auth success');
-
-      // Send to backend
-      // const res = await axios.post(
-      //   `${BACKEND_URL}/api/v1/users/firebase/auth/google`,
-      //   { idToken },
-      //   { headers: { 'Content-Type': 'application/json' } }
-      // );
-
-      // console.log('✅ Backend Login successful:', res.data?.user?.email);
-      
-      // await authenticate(res.data, () => {
-      //   setTimeout(() => {
-      //     Alert.alert(
-      //       'Welcome Back! 🌿',
-      //       'Google Login successful!',
-      //       [
-      //         { 
-      //           text: 'Continue', 
-      //           onPress: () => {
-      //             if (res.data.user?.role === 'admin') {
-      //               navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
-      //             } else {
-      //               navigation.reset({ index: 0, routes: [{ name: 'UserHome' }] });
-      //             }
-      //           }
-      //         }
-      //       ]
-      //     );
-      //   }, 300);
-      // });
       Alert.alert('Development Mode', 'Google Login is disabled in Expo Go. Please build the native app to test.');
-
     } catch (error) {
       console.error('❌ Google Login error:', error);
       Alert.alert('Google Login Failed', error.message || 'Something went wrong');
@@ -98,31 +128,6 @@ export default function LoginScreen({ navigation }) {
   };
 
   // Animation Values
-  const emailFocusAnim = useRef(new Animated.Value(0)).current;
-  const passwordFocusAnim = useRef(new Animated.Value(0)).current;
-  const buttonScale = useRef(new Animated.Value(1)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-
-  const passwordInput = useRef(null);
-  const emailInput = useRef(null);
-
-  // --- Animation Handlers ---
-  const handleFocus = (anim) => {
-    Animated.timing(anim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleBlur = (anim) => {
-    Animated.timing(anim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  };
-
   const animateButtonPress = () => {
     Animated.sequence([
       Animated.timing(buttonScale, {
@@ -250,151 +255,193 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* 1. Dynamic Mesh Gradient Background - Adjusted for Light Theme */}
-      <LinearGradient
-        colors={['#F0F9F4', '#E8F6F0', '#D5F5E3']} // Very light mint/white gradient
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+      {/* Background Image with rotation */}
+      <Animated.Image
+        source={backgroundImages[currentImageIndex]}
+        style={[styles.backgroundImage, { opacity: videoOpacityAnim }]}
+        resizeMode="cover"
       />
       
-      {/* Decorative Orbs for Depth - Adjusted colors */}
-      <View style={[styles.orb, { top: -50, left: -50, backgroundColor: '#27AE60', width: 200, height: 200 }]} />
-      <View style={[styles.orb, { bottom: 100, right: -20, backgroundColor: '#52BE80', width: 150, height: 150 }]} />
+      {/* Dark overlay */}
+      <View style={styles.overlay} />
 
       <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* 2. Hero Element - Glassmorphic Card */}
-            <BlurView intensity={20} tint="dark" style={styles.glassCard}>
-              
-              {/* Logo & Title */}
-              <View style={styles.header}>
-                <View style={styles.logoContainer}>
-                   {/* Placeholder for 3D Peppercorn render - using existing logo for now with glow */}
-                   <Image source={logoImage} style={styles.logoImage} resizeMode="contain" />
-                </View>
-                <Text style={styles.title}>PiperSmart</Text>
-                <Text style={styles.subtitle}>Smart Pepper Care</Text>
-              </View>
+        {/* Hero Section - Visible when form is closed */}
+        {!showForm && (
+          <View style={styles.heroSection}>
+            <View style={styles.heroContent}>
+              <Image source={logoImage} style={styles.heroLogo} resizeMode="contain" />
+              <Text style={styles.heroTitle}>PiperSmart</Text>
+              <Text style={styles.heroSubtitle}>Smart Pepper Disease Detection</Text>
+              <Text style={styles.heroDescription}>
+                Identify and manage black pepper diseases with advanced AI technology
+              </Text>
+            </View>
 
-              {/* Form Inputs */}
-              <View style={styles.formContainer}>
-                <AnimatedInput
-                  label="Email Address"
-                  icon="mail"
-                  focusAnim={emailFocusAnim}
-                  value={email}
-                  onChangeText={setEmail}
-                  ref={emailInput}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  returnKeyType="next"
-                  onSubmitEditing={() => passwordInput.current?.focus()}
-                  textContentType="emailAddress"
-                  autoComplete="email"
-                />
-
-                <AnimatedInput
-                  label="Password"
-                  icon="lock"
-                  focusAnim={passwordFocusAnim}
-                  value={password}
-                  onChangeText={setPassword}
-                  ref={passwordInput}
-                  secureTextEntry={!showPassword}
-                  returnKeyType="done"
-                  onSubmitEditing={handleLogin}
-                  rightElement={
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={styles.eyeButton}
-                    >
-                      <Feather 
-                        name={showPassword ? "eye-off" : "eye"} 
-                        size={20} 
-                        color="rgba(255,255,255,0.6)" 
-                      />
-                    </TouchableOpacity>
-                  }
-                  textContentType="password"
-                  autoComplete="password"
-                />
-
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('ForgotPassword')}
-                  style={styles.forgotLink}
-                >
-                  <Text style={styles.linkText}>Forgot Password?</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* 3. Haptic Sign In Button */}
-              <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-                <TouchableOpacity
-                  style={styles.loginButton}
-                  onPress={handleLogin}
-                  disabled={loading}
-                  activeOpacity={1}
-                >
-                  {/* Shimmer Effect */}
-                  <Animated.View
-                    style={[
-                      styles.shimmer,
-                      { transform: [{ translateX: shimmerTranslate }] }
-                    ]}
-                  >
-                    <LinearGradient
-                      colors={['transparent', 'rgba(255,255,255,0.3)', 'transparent']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={{ flex: 1 }}
-                    />
-                  </Animated.View>
-
-                  {loading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.buttonText}>Sign In</Text>
-                  )}
-                </TouchableOpacity>
-              </Animated.View>
-
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* Social Login */}
+            {/* Get Started Button */}
+            <Animated.View style={{ transform: [{ scale: getStartedScaleAnim }] }}>
               <TouchableOpacity
-                style={styles.googleButton}
-                onPress={onGoogleButtonPress}
-                disabled={loading}
+                style={styles.getStartedButton}
+                onPress={handleGetStarted}
+                activeOpacity={0.8}
               >
-                <Feather name="chrome" size={20} color="#1B4D3E" />
-                <Text style={styles.googleButtonText}>Continue with Google</Text>
+                <Text style={styles.getStartedText}>Get Started</Text>
+                <Feather name="arrow-right" size={20} color="#FFFFFF" style={styles.arrowIcon} />
               </TouchableOpacity>
+            </Animated.View>
+          </View>
+        )}
 
-              {/* Sign Up Link */}
-              <View style={styles.signupContainer}>
-                <Text style={styles.signupText}>Don't have an account? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                  <Text style={styles.signupLink}>Sign Up</Text>
+        {/* Sliding Login Form - Appears from bottom */}
+        <Animated.View
+          style={[
+            styles.formWrapper,
+            { transform: [{ translateY: formSlideAnim }] }
+          ]}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
+          >
+            {/* Close Button at top of form */}
+            {showForm && (
+              <View style={styles.closeButtonArea}>
+                <TouchableOpacity
+                  onPress={handleCloseForm}
+                  style={styles.closeButton}
+                >
+                  <Feather name="chevron-down" size={28} color="#1B4D3E" />
                 </TouchableOpacity>
               </View>
+            )}
 
-            </BlurView>
-          </ScrollView>
-        </KeyboardAvoidingView>
+            <ScrollView
+              contentContainerStyle={styles.formScrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              <BlurView intensity={25} tint="dark" style={styles.formCard}>
+                {/* Form Header */}
+                <View style={styles.formHeader}>
+                  <Text style={styles.formTitle}>Welcome Back</Text>
+                  <Text style={styles.formSubtitle}>Sign in to your account</Text>
+                </View>
+
+                {/* Form Inputs */}
+                <View style={styles.formContainer}>
+                  <AnimatedInput
+                    label="Email Address"
+                    icon="mail"
+                    focusAnim={emailFocusAnim}
+                    value={email}
+                    onChangeText={setEmail}
+                    ref={emailInput}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordInput.current?.focus()}
+                    textContentType="emailAddress"
+                    autoComplete="email"
+                  />
+
+                  <AnimatedInput
+                    label="Password"
+                    icon="lock"
+                    focusAnim={passwordFocusAnim}
+                    value={password}
+                    onChangeText={setPassword}
+                    ref={passwordInput}
+                    secureTextEntry={!showPassword}
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                    rightElement={
+                      <TouchableOpacity
+                        onPress={() => setShowPassword(!showPassword)}
+                        style={styles.eyeButton}
+                      >
+                        <Feather 
+                          name={showPassword ? "eye-off" : "eye"} 
+                          size={20} 
+                          color="rgba(45, 45, 45, 0.7)" 
+                        />
+                      </TouchableOpacity>
+                    }
+                    textContentType="password"
+                    autoComplete="password"
+                  />
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      handleCloseForm();
+                      setTimeout(() => navigation.navigate('ForgotPassword'), 300);
+                    }}
+                    style={styles.forgotLink}
+                  >
+                    <Text style={styles.linkText}>Forgot Password?</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Sign In Button */}
+                <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+                  <TouchableOpacity
+                    style={styles.loginButton}
+                    onPress={handleLogin}
+                    disabled={loading}
+                    activeOpacity={0.8}
+                  >
+                    <Animated.View
+                      style={[
+                        styles.shimmer,
+                        { transform: [{ translateX: shimmerTranslate }] }
+                      ]}
+                    >
+                      <LinearGradient
+                        colors={['transparent', 'rgba(255,255,255,0.2)', 'transparent']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={{ flex: 1 }}
+                      />
+                    </Animated.View>
+
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.buttonText}>Sign In</Text>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
+
+                {/* Divider */}
+                <View style={styles.divider}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+
+                {/* Social Login */}
+                <TouchableOpacity
+                  style={styles.googleButton}
+                  onPress={onGoogleButtonPress}
+                  disabled={loading}
+                >
+                  <Feather name="chrome" size={20} color="#1B4D3E" />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </TouchableOpacity>
+
+                {/* Sign Up Link */}
+                <View style={styles.signupContainer}>
+                  <Text style={styles.signupText}>Don't have an account? </Text>
+                  <TouchableOpacity onPress={() => {
+                    handleCloseForm();
+                    setTimeout(() => navigation.navigate('Register'), 300);
+                  }}>
+                    <Text style={styles.signupLink}>Sign Up</Text>
+                  </TouchableOpacity>
+                </View>
+              </BlurView>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
@@ -469,78 +516,150 @@ const AnimatedInput = ({ label, icon, focusAnim, value, ...props }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F0F9F4', // Light background
+    backgroundColor: '#000000',
   },
-  orb: {
-    position: 'absolute',
-    borderRadius: 999,
-    opacity: 0.15, // Softer opacity for white bg
-    filter: 'blur(40px)', 
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
   },
-  glassCard: {
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#C8E6C9', // Light green border
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Frosted white
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
-    elevation: 5,
-  },
-  header: {
+  heroSection: {
+    flex: 1,
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 32,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
   },
-  logoContainer: {
-    width: 80,
-    height: 80,
-    marginBottom: 16,
+  heroContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  heroLogo: {
+    width: 180,
+    height: 180,
+    marginBottom: 24,
     shadowColor: '#27AE60',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-    // No tintColor needed, use original logo colors
-  },
-  title: {
-    fontSize: 32,
+  heroTitle: {
+    fontSize: 48,
     fontWeight: '800',
-    color: '#1B4D3E', // Dark Green
-    letterSpacing: 1,
+    color: '#FFFFFF',
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  subtitle: {
+  heroSubtitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#27AE60',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  heroDescription: {
     fontSize: 14,
-    color: '#52866A', // Medium Green
-    marginTop: 4,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 21,
+    paddingHorizontal: 12,
+  },
+  getStartedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 48,
+    borderRadius: 28,
+    backgroundColor: '#27AE60',
+    shadowColor: '#27AE60',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+    marginBottom: 24,
+  },
+  getStartedText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
     letterSpacing: 0.5,
+    marginRight: 8,
+  },
+  arrowIcon: {
+    marginLeft: 4,
+  },
+  formWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'flex-end',
+  },
+  formCard: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+    borderRadius: 32,
+    padding: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.4,
+    shadowRadius: 30,
+    elevation: 12,
+  },
+  closeButtonArea: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  closeButton: {
+    padding: 8,
+    borderRadius: 50,
+    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+  },
+  formScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 20,
+  },
+  formHeader: {
+    alignItems: 'center',
+    marginBottom: 28,
+  },
+  formTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1B4D3E',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  formSubtitle: {
+    fontSize: 14,
+    color: '#666666',
   },
   formContainer: {
     marginBottom: 24,
   },
   inputContainer: {
     marginBottom: 20,
-    height: 60,
+    height: 56,
     justifyContent: 'center',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF', // White input bg
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E8F6F0',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
     paddingHorizontal: 16,
     height: '100%',
   },
@@ -549,17 +668,17 @@ const styles = StyleSheet.create({
   },
   floatingLabel: {
     position: 'absolute',
-    left: 0,
-    top: 18, 
-    fontSize: 16,
+    left: 16,
+    top: 18,
+    fontSize: 14,
     fontWeight: '500',
   },
   input: {
     flex: 1,
-    color: '#1B4D3E', // Dark text
+    color: '#1B4D3E',
     fontSize: 16,
     height: '100%',
-    marginTop: 10, 
+    marginTop: 8,
     paddingVertical: 0,
   },
   eyeButton: {
@@ -571,21 +690,21 @@ const styles = StyleSheet.create({
   },
   linkText: {
     color: '#27AE60',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   loginButton: {
     height: 56,
-    borderRadius: 16,
-    backgroundColor: '#27AE60', // Primary Green
+    borderRadius: 14,
+    backgroundColor: '#27AE60',
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     shadowColor: '#27AE60',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 6,
   },
   shimmer: {
     ...StyleSheet.absoluteFillObject,
@@ -593,48 +712,48 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
+    marginVertical: 20,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#C8E6C9',
+    backgroundColor: '#E0E0E0',
   },
   dividerText: {
     marginHorizontal: 16,
-    color: '#52866A',
-    fontSize: 14,
+    color: '#999999',
+    fontSize: 13,
   },
   googleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#C8E6C9',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
     backgroundColor: '#FFFFFF',
   },
   googleButtonText: {
     color: '#1B4D3E',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     marginLeft: 12,
   },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 20,
   },
   signupText: {
-    color: '#52866A',
+    color: '#666666',
     fontSize: 14,
   },
   signupLink: {

@@ -16,14 +16,17 @@ import {
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import MobileHeader from '../../shared/MobileHeader';
 import MobileFooter from '../../shared/MobileFooter';
+import Notepad from '../../shared/Notepad';
 import { logout, getUser } from '../../utils/helper';
 
 const { width } = Dimensions.get('window');
 
+const detectionImage = require('../../../../picsbl/index1.jpg');
+
 const bpImages = [
-  require('../../../../assets/bp1.jpg'),
-  require('../../../../assets/bp2.jpg'),
-  require('../../../../assets/bp3.jpg'),
+  require('../../../../picsbl/index2.png'),
+  require('../../../../picsbl/index3.png'),
+  require('../../../../picsbl/index4.png'),
 ];
 
 export default function HomeScreen({ navigation }) {
@@ -182,13 +185,20 @@ export default function HomeScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
-          <View>
+          <View style={styles.welcomeLeft}>
             <Text style={styles.greetingText}>{getGreeting()},</Text>
             <Text style={styles.userNameText}>{user ? user.name.split(' ')[0] : 'Farmer'}</Text>
+            <View style={styles.statusIndicator}>
+              <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
+              <Text style={styles.statusText}>System Online</Text>
+            </View>
           </View>
-          <View style={styles.weatherBadge}>
-            <Feather name="sun" size={20} color={colors.warning} />
-            <Text style={styles.weatherText}>28°C</Text>
+          <View style={styles.welcomeRight}>
+            <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+            <View style={styles.weatherBadge}>
+              <Feather name="sun" size={20} color={colors.warning} />
+              <Text style={styles.weatherText}>28°C</Text>
+            </View>
           </View>
         </View>
 
@@ -268,15 +278,6 @@ export default function HomeScreen({ navigation }) {
           </ScrollView>
         </View>
 
-        {/* Offline Indicator (Mockup) */}
-        <View style={styles.statusRow}>
-          <View style={styles.statusIndicator}>
-            <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
-            <Text style={styles.statusText}>System Online</Text>
-          </View>
-          <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
-        </View>
-
         {/* Bento Grid Layout */}
         <View style={styles.bentoGrid}>
           {/* Main Action Card - Leaf Analysis */}
@@ -286,7 +287,7 @@ export default function HomeScreen({ navigation }) {
             activeOpacity={0.9}
           >
             <ImageBackground
-              source={bpImages[0]}
+              source={detectionImage}
               style={styles.mainCardBg}
               imageStyle={{ borderRadius: 24, opacity: 0.8 }}
             >
@@ -343,18 +344,18 @@ export default function HomeScreen({ navigation }) {
                 <Feather name="map" size={24} color="#2E7D32" />
               </View>
               <Text style={styles.gridTitle}>Farm Map</Text>
-              <Text style={styles.gridSubtitle}>Track crops</Text>
+              <Text style={styles.gridSubtitle}>Track crops & weather</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={[styles.gridCard, { backgroundColor: colors.cardBg }]} 
-              onPress={() => handleNavigation('Weather')}
+              onPress={() => handleNavigation('Messenger')}
             >
               <View style={[styles.gridIcon, { backgroundColor: '#F3E5F5' }]}>
-                <Feather name="cloud-drizzle" size={24} color="#7B1FA2" />
+                <Feather name="message-circle" size={24} color="#7B1FA2" />
               </View>
-              <Text style={styles.gridTitle}>Weather</Text>
-              <Text style={styles.gridSubtitle}>Forecast</Text>
+              <Text style={styles.gridTitle}>Messages</Text>
+              <Text style={styles.gridSubtitle}>Chat & discuss</Text>
             </TouchableOpacity>
           </View>
           
@@ -412,6 +413,9 @@ export default function HomeScreen({ navigation }) {
           <Feather name="camera" size={32} color="#FFFFFF" />
         </TouchableOpacity>
       </Animated.View>
+
+      {/* Floating Notepad */}
+      <Notepad />
     </SafeAreaView>
   );
 }
@@ -430,6 +434,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  welcomeLeft: {
+    flex: 1,
+    justifyContent: 'flex-start',
+  },
+  welcomeRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
   greetingText: {
     fontSize: 16,
@@ -520,12 +535,6 @@ const styles = StyleSheet.create({
   inactiveIndicator: {
     backgroundColor: 'rgba(255,255,255,0.5)',
   },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
   statusIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -534,6 +543,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    marginTop: 8,
   },
   statusDot: {
     width: 8,

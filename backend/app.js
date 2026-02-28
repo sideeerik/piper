@@ -57,6 +57,10 @@ app.use('/api/v1/forum', forumRoutes);
 const chatRoutes = require('./routes/Chat');
 app.use('/api/v1/chat', chatRoutes);
 
+// ========== NOTE ROUTES ==========
+const noteRoutes = require('./routes/Note');
+app.use('/api/v1/notes', noteRoutes);
+
 // ========== HEALTH CHECK ==========
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

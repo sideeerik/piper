@@ -20,10 +20,12 @@ import { logout, getUser } from '../../utils/helper';
 
 const { width } = Dimensions.get('window');
 
+const detectionImage = require('../../../../picsbl/index1.jpg');
+
 const bpImages = [
-  require('../../../../assets/bp1.jpg'),
-  require('../../../../assets/bp2.jpg'),
-  require('../../../../assets/bp3.jpg'),
+  require('../../../../picsbl/index2.png'),
+  require('../../../../picsbl/index3.png'),
+  require('../../../../picsbl/index4.png'),
 ];
 
 export default function IndexScreen({ navigation }) {
@@ -37,6 +39,9 @@ export default function IndexScreen({ navigation }) {
   // Carousel State
   const [currentSlide, setCurrentSlide] = useState(0);
   const carouselTimerRef = useRef(null);
+  
+  // Recent Activity Toggle
+  const [showRecentActivity, setShowRecentActivity] = useState(false);
 
   const colors = {
     primary: '#1B4D3E',
@@ -113,6 +118,10 @@ export default function IndexScreen({ navigation }) {
     }, 5000);
   };
 
+
+
+
+
   const handleLogout = async () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
       { text: 'Cancel', style: 'cancel' },
@@ -165,6 +174,8 @@ export default function IndexScreen({ navigation }) {
     return 'Good Evening';
   };
 
+
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.primary} />
@@ -182,30 +193,23 @@ export default function IndexScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Welcome Section */}
         <View style={styles.welcomeSection}>
-          <View>
+          <View style={styles.welcomeLeft}>
             <Text style={styles.greetingText}>{getGreeting()},</Text>
             <Text style={styles.userNameText}>{user ? user.name.split(' ')[0] : 'Farmer'}</Text>
-          </View>
-          <View style={styles.weatherBadge}>
-            <Feather name="sun" size={20} color={colors.warning} />
-            <Text style={styles.weatherText}>28°C</Text>
-          </View>
-        </View>
-
-        {/* System Introduction Card */}
-        <View style={styles.introCard}>
-          <View style={styles.introHeader}>
-            <View style={styles.introIcon}>
-              <Feather name="shield" size={24} color={colors.primary} />
+            <View style={styles.statusIndicator}>
+              <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
+              <Text style={styles.statusText}>System Online</Text>
             </View>
-            <Text style={styles.introTitle}>About PiperSmart</Text>
           </View>
-          <Text style={styles.introText}>
-            Your advanced AI companion for black pepper farming. Detect diseases early, get expert advice, and manage your crops efficiently.
-          </Text>
+          <View style={styles.welcomeRight}>
+            <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+            <View style={styles.weatherBadge}>
+              <Feather name="sun" size={20} color={colors.warning} />
+              <Text style={styles.weatherText}>28°C</Text>
+            </View>
+          </View>
         </View>
-
-        {/* Introduction / Carousel Section */}
+        {/* Image Slides / Carousel */}
         <View style={styles.carouselContainer}>
           <ImageBackground
             source={slides[currentSlide].image}
@@ -233,51 +237,20 @@ export default function IndexScreen({ navigation }) {
           </ImageBackground>
         </View>
 
-        {/* How It Works - Horizontal Scroll */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How It Works</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stepsContainer}>
-            <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#E3F2FD' }]}>
-                <Text style={[styles.stepNumberText, { color: '#1565C0' }]}>1</Text>
-              </View>
-              <Text style={styles.stepTitle}>Capture</Text>
-              <Text style={styles.stepDesc}>Take a photo of the leaf</Text>
+        {/* About PiperSmart Introduction Card */}
+        <View style={styles.introCard}>
+          <View style={styles.introHeader}>
+            <View style={styles.introIcon}>
+              <Feather name="shield" size={24} color={colors.primary} />
             </View>
-            <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#E8F5E9' }]}>
-                <Text style={[styles.stepNumberText, { color: '#2E7D32' }]}>2</Text>
-              </View>
-              <Text style={styles.stepTitle}>Upload</Text>
-              <Text style={styles.stepDesc}>Submit to PiperSmart AI</Text>
-            </View>
-            <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#FFF3E0' }]}>
-                <Text style={[styles.stepNumberText, { color: '#EF6C00' }]}>3</Text>
-              </View>
-              <Text style={styles.stepTitle}>Analyze</Text>
-              <Text style={styles.stepDesc}>Get instant diagnosis</Text>
-            </View>
-            <View style={styles.stepCard}>
-              <View style={[styles.stepNumber, { backgroundColor: '#F3E5F5' }]}>
-                <Text style={[styles.stepNumberText, { color: '#7B1FA2' }]}>4</Text>
-              </View>
-              <Text style={styles.stepTitle}>Act</Text>
-              <Text style={styles.stepDesc}>Follow expert advice</Text>
-            </View>
-          </ScrollView>
-        </View>
-
-        {/* Offline Indicator (Mockup) */}
-        <View style={styles.statusRow}>
-          <View style={styles.statusIndicator}>
-            <View style={[styles.statusDot, { backgroundColor: colors.success }]} />
-            <Text style={styles.statusText}>System Online</Text>
+            <Text style={styles.introTitle}>About PiperSmart</Text>
           </View>
-          <Text style={styles.dateText}>{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+          <Text style={styles.introText}>
+            Your advanced AI companion for black pepper farming. Detect diseases early, get expert advice, and manage your crops efficiently.
+          </Text>
         </View>
 
-        {/* Bento Grid Layout */}
+        {/* Main Functions - Bento Grid Layout */}
         <View style={styles.bentoGrid}>
           {/* Main Action Card - Leaf Analysis */}
           <TouchableOpacity 
@@ -286,7 +259,7 @@ export default function IndexScreen({ navigation }) {
             activeOpacity={0.9}
           >
             <ImageBackground
-              source={bpImages[0]}
+              source={detectionImage}
               style={styles.mainCardBg}
               imageStyle={{ borderRadius: 24, opacity: 0.8 }}
             >
@@ -303,7 +276,7 @@ export default function IndexScreen({ navigation }) {
                 </View>
                 <View>
                   <Text style={styles.mainCardTitle}>Start Detection</Text>
-                  <Text style={styles.mainCardSubtitle}>Scan pepper leaves for diseases</Text>
+                  <Text style={styles.mainCardSubtitle}>Scan Black Pepper Bunga and Leaves</Text>
                 </View>
               </View>
             </ImageBackground>
@@ -343,18 +316,18 @@ export default function IndexScreen({ navigation }) {
                 <Feather name="map" size={24} color="#2E7D32" />
               </View>
               <Text style={styles.gridTitle}>Farm Map</Text>
-              <Text style={styles.gridSubtitle}>Track crops</Text>
+              <Text style={styles.gridSubtitle}>Track crops & weather</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               style={[styles.gridCard, { backgroundColor: colors.cardBg }]} 
-              onPress={() => handleNavigation('Weather')}
+              onPress={() => handleNavigation('Messenger')}
             >
               <View style={[styles.gridIcon, { backgroundColor: '#F3E5F5' }]}>
-                <Feather name="cloud-drizzle" size={24} color="#7B1FA2" />
+                <Feather name="message-circle" size={24} color="#7B1FA2" />
               </View>
-              <Text style={styles.gridTitle}>Weather</Text>
-              <Text style={styles.gridSubtitle}>Forecast</Text>
+              <Text style={styles.gridTitle}>Messages</Text>
+              <Text style={styles.gridSubtitle}>Chat & discuss</Text>
             </TouchableOpacity>
           </View>
           
@@ -377,26 +350,67 @@ export default function IndexScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Recent Activity Section */}
+        {/* How It Works - Horizontal Scroll */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>How It Works</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stepsContainer}>
+            <View style={styles.stepCard}>
+              <View style={[styles.stepNumber, { backgroundColor: '#E3F2FD' }]}>
+                <Text style={[styles.stepNumberText, { color: '#1565C0' }]}>1</Text>
+              </View>
+              <Text style={styles.stepTitle}>Capture</Text>
+              <Text style={styles.stepDesc}>Take a photo of the leaf</Text>
+            </View>
+            <View style={styles.stepCard}>
+              <View style={[styles.stepNumber, { backgroundColor: '#E8F5E9' }]}>
+                <Text style={[styles.stepNumberText, { color: '#2E7D32' }]}>2</Text>
+              </View>
+              <Text style={styles.stepTitle}>Upload</Text>
+              <Text style={styles.stepDesc}>Submit to PiperSmart AI</Text>
+            </View>
+            <View style={styles.stepCard}>
+              <View style={[styles.stepNumber, { backgroundColor: '#FFF3E0' }]}>
+                <Text style={[styles.stepNumberText, { color: '#EF6C00' }]}>3</Text>
+              </View>
+              <Text style={styles.stepTitle}>Analyze</Text>
+              <Text style={styles.stepDesc}>Get instant diagnosis</Text>
+            </View>
+            <View style={styles.stepCard}>
+              <View style={[styles.stepNumber, { backgroundColor: '#F3E5F5' }]}>
+                <Text style={[styles.stepNumberText, { color: '#7B1FA2' }]}>4</Text>
+              </View>
+              <Text style={styles.stepTitle}>Act</Text>
+              <Text style={styles.stepDesc}>Follow expert advice</Text>
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* Recent Activity Section with Toggle */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
-            <TouchableOpacity onPress={() => handleNavigation('LeafAnalysis')}>
-              <Text style={styles.seeAllText}>View All</Text>
+            <TouchableOpacity onPress={() => setShowRecentActivity(!showRecentActivity)}>
+              <Feather 
+                name={showRecentActivity ? 'chevron-up' : 'chevron-down'} 
+                size={24} 
+                color={colors.textLight} 
+              />
             </TouchableOpacity>
           </View>
           
-          {/* Placeholder for empty state */}
-          <View style={styles.emptyState}>
-            <Feather name="activity" size={32} color={colors.border} />
-            <Text style={styles.emptyStateText}>No recent scans found</Text>
-            <TouchableOpacity 
-              style={styles.scanButtonSmall}
-              onPress={() => handleNavigation('LeafAnalysis')}
-            >
-              <Text style={styles.scanButtonText}>Scan Now</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Recent Activity Content - Toggled */}
+          {showRecentActivity && (
+            <View style={styles.emptyState}>
+              <Feather name="activity" size={32} color={colors.border} />
+              <Text style={styles.emptyStateText}>No recent scans found</Text>
+              <TouchableOpacity 
+                style={styles.scanButtonSmall}
+                onPress={() => navigation.navigate('Login')}
+              >
+                <Text style={styles.scanButtonText}>Get Started</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 80 }} />
@@ -430,6 +444,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     marginTop: 8,
+    paddingHorizontal: 4,
+  },
+  welcomeLeft: {
+    flex: 1,
+    justifyContent: 'flex-start',
+  },
+  welcomeRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
   greetingText: {
     fontSize: 16,

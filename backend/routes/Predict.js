@@ -21,149 +21,8 @@ const upload = multer({
   }
 });
 
-/**
- * POST /api/v1/predict/disease
- * Predict pepper leaf disease from image
- */
-router.post('/disease', isAuthenticatedUser, upload.single('image'), async (req, res) => {
-  const startTime = Date.now();
-  const requestId = req.query.requestId || req.body.requestId || `unknown_${Date.now()}`;
-  
-  console.log(`\n🔵 [${requestId}] NEW DISEASE PREDICTION REQUEST RECEIVED`);
-  
-  try {
-    if (!req.file) {
-      console.error(`❌ [${requestId}] No image file provided`);
-      return res.status(400).json({
-        success: false,
-        error: 'No image provided. Please upload an image.',
-        requestId
-      });
-    }
+// Routes are defined below using controllers
 
-    console.log(`📸 [${requestId}] Image received: ${req.file.originalname} (${req.file.size} bytes)`);
-
-    // Create temp directory if it doesn't exist
-    const tempDir = path.join(__dirname, '../temp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-
-    // Save image temporarily - use requestId for unique filename
-    const tempImagePath = path.join(tempDir, `${requestId}.jpg`);
-    fs.writeFileSync(tempImagePath, req.file.buffer);
-
-    console.log(`💾 [${requestId}] Temp file saved: ${tempImagePath}`);
-
-    // Call Python prediction script
-    const result = await new Promise((resolve, reject) => {
-      // Python script path - Use YOLOv8 model
-      const pythonScriptPath = path.join(__dirname, '../utils/predict_disease_yolov8.py');
-      const leafDiseaseModelPath = path.join(__dirname, '../ml_models/leaf/train/weights/best.pt');
-      const pythonExe = process.env.PYTHON_EXE || 'python';
-      
-      console.log(`🐍 [${requestId}] Spawning Python inference...`);
-      console.log(`🐍 [${requestId}] Script: ${pythonScriptPath}`);
-      console.log(`🐍 [${requestId}] Model: leaf/train/weights/best.pt`);
-      
-      // Use spawn without shell: true - Node.js handles paths with spaces correctly
-      const python = spawn(pythonExe, [pythonScriptPath, tempImagePath, leafDiseaseModelPath], {
-        stdio: ['ignore', 'pipe', 'pipe']
-      });
-
-      let output = '';
-      let errorOutput = '';
-
-      python.stdout.on('data', (data) => {
-        output += data.toString();
-      });
-
-      python.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-        console.log(`[${requestId}] Python: ${data.toString().trim()}`);
-      });
-
-      python.on('close', (code) => {
-        // Clean up temp file
-        try {
-          if (fs.existsSync(tempImagePath)) {
-            fs.unlinkSync(tempImagePath);
-            console.log(`🗑️ [${requestId}] Temp file deleted`);
-          }
-        } catch (e) {
-          console.error(`[${requestId}] Error deleting temp file:`, e);
-        }
-
-        if (code === 0) {
-          try {
-            const parsedOutput = JSON.parse(output.trim());
-            console.log(`✅ [${requestId}] Python returned valid JSON`);
-            resolve(parsedOutput);
-          } catch (e) {
-            console.error(`❌ [${requestId}] Error parsing Python output:`, e.message);
-            reject(new Error('Invalid prediction output'));
-          }
-        } else {
-          console.error(`❌ [${requestId}] Python process exited with code ${code}`);
-          console.error(`[${requestId}] Error output: ${errorOutput}`);
-          reject(new Error(`Prediction failed: ${errorOutput || 'Unknown error'}`));
-        }
-      });
-
-      python.on('error', (err) => {
-        console.error('Failed to start Python process:', err);
-        try {
-          fs.unlinkSync(tempImagePath);
-        } catch (e) {}
-        reject(new Error('Failed to start prediction service'));
-      });
-    });
-
-    if (result.error) {
-      const duration = Date.now() - startTime;
-      console.log(`⚠️ [${requestId}] Disease prediction failed (took ${duration}ms):`, result.error);
-      return res.status(400).json({
-        success: false,
-        error: result.error,
-        processingTime: duration,
-        requestId
-      });
-    }
-
-    const duration = Date.now() - startTime;
-    console.log(`✅ Disease prediction completed in ${duration}ms`);
-    console.log(`📊 Result:`, JSON.stringify(result, null, 2));
-    res.status(200).json({
-      success: true,
-      processingTime: duration,
-      requestId,
-      ...result
-    });
-
-  } catch (error) {
-    const duration = Date.now() - startTime;
-    console.error(`❌ [${requestId}] Prediction error (${duration}ms):`, error.message);
-
-    // Try to clean up temp file - use requestId-based filename
-    try {
-      const tempDir = path.join(__dirname, '../temp');
-      const tempFile = path.join(tempDir, `${requestId}.jpg`);
-      if (fs.existsSync(tempFile)) {
-        fs.unlinkSync(tempFile);
-        console.log(`[${requestId}] Cleaned up temp file on error`);
-      }
-    } catch (e) {
-      console.error(`[${requestId}] Error cleaning temp file:`, e.message);
-    }
-
-    res.status(500).json({
-      success: false,
-      error: error.message || 'Failed to analyze image. Please try again.',
-      requestId,
-      processingTime: duration
-    });
-  }
-});
 
 /**
  * POST /api/v1/predict/bunga-ripeness
@@ -296,8 +155,21 @@ router.post('/bunga-ripeness', isAuthenticatedUser, upload.single('image'), asyn
 });
 
 const { analyzeBunga, getHistory } = require('../controllers/bungaController');
+const { analyzeLeaf, getLeafHistory } = require('../controllers/leafController');
 
 // ... existing code ...
+
+/**
+ * POST /api/v1/predict/disease
+ * Predict pepper leaf disease from image
+ */
+router.post('/disease', isAuthenticatedUser, upload.single('image'), analyzeLeaf);
+
+/**
+ * GET /api/v1/predict/leaf-history
+ * Get user's past leaf scans
+ */
+router.get('/leaf-history', isAuthenticatedUser, getLeafHistory);
 
 /**
  * POST /api/v1/predict/bunga-with-objects
